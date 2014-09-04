@@ -5,6 +5,7 @@
 // TODO add a placeholder comment for arrays (and indicate it in ancestor)
 // TODO a method to clear template analysis metadata (__smooth stuff)
 // TODO support getter/setter syntax for data (funcs as data binding property)
+// TODO test how unavailqble data is handled
 
 window.Smooth = (function() {
 
@@ -68,11 +69,24 @@ window.Smooth = (function() {
         var subcontext = (meta.mainBinding == null) ? context :
                          context.concat(meta.bindings[meta.mainBinding].value);
         meta.descendants = findDescendants(element, attribute, function() {
-            return analyzeDom(this, subcontext, attribute);
+            var that = analyzeDom(this, subcontext, attribute);
+            that.__smooth.ancestor = element;
+            return that;
         });
 
         element.__smooth = meta;
         return element;
+    }
+    
+    // finds the root of an analyzed DOM element
+    // just a shortcut function that follows ancestor links to the root
+    // returns null in case of error
+    function findRoot(element) {
+        if(!element.__smooth)
+            return null;
+        if(!element.__smooth.ancestor)
+            return element;
+        return findRoot(element.__smooth.ancestor);
     }
 
     // data is an object, context is an array. always.
@@ -99,17 +113,17 @@ window.Smooth = (function() {
     function getAccessor(data, context, key) {
         var accessor = {};
         var current = resolveContext(data, context);
-        var valtype = typeof(current[key]);
+        accessor.value = current[key];
         // define get/set & resolve funcs actual type
-        switch(valtype) {
+        switch(typeof accessor.value) {
             case 'function':
                 accessor.get = function() {
-                    return resolveContext(data, context)[key]();
+                    return resolveContext(data, context)[key].call(data);
                 };
                 accessor.set = function(value) {
-                    resolveContext(data, context)[key](value);
+                    resolveContext(data, context)[key].call(data, value);
                 };
-                valtype = typeof(current[key]());
+                accessor.value = accessor.value.call(data);
                 break;
             case 'boolean':
             case 'number':
@@ -127,16 +141,18 @@ window.Smooth = (function() {
             default:
                 throw new Error('value type not handled: ' + typeof(data[key]));
         }
-        // accessor type
-        switch(valtype) {
+        // accessor type: value, object or array (or undefined)
+        switch(typeof accessor.value) {
             case 'boolean':
             case 'number':
             case 'string':
                 accessor.type = 'value';
                 break;
             case 'object':
-                // TODO arrays
-                accessor.type = 'object';
+                if(accessor.value instanceof Array)
+                    accessor.type = 'array';
+                else
+                    accessor.type = 'object';
                 break;
             case 'undefined':
                 accessor.type = 'undefined';
@@ -150,25 +166,52 @@ window.Smooth = (function() {
     // TODO handle form elements
     // TODO also set watches on change etc
     function applyValue(element, target, accessor) {
-        if(accessor.type == 'value') {
-            var value = accessor.get();
+        if (accessor.type == 'value') {
+            var value = accessor.value;
             if(value == null) value = '';
-            if(!target)
-                element.innerHTML = value;
-            else
+            if(accessor.hasOwnProperty('oldvalue') &&
+               accessor.oldvalue == value)
+                return;
+            if(!target) {
+                if(element.tagName == 'INPUT') {
+                    if(!element.__smooth.SKIPUPDATE) {
+                        element.value = value;
+                        element.addEventListener('input', function() {
+                            accessor.set(this.value);
+                            element.value = accessor.get();
+                            this.__smooth.SKIPUPDATE = true;
+                            applyObject(findRoot(element));
+                            delete this.__smooth.SKIPUPDATE;
+                        });
+                    }
+                } else
+                    element.innerHTML = value;
+            } else
                 element.setAttribute(target, value);
         }
         // TODO duplicate array children here
+        // array on attribute => space separated values
     }
 
     function applyObject(element, data) {
         // step 1 - only main bindings
         if(!element.__smooth) return;
+        var oldAccessor = {};
+        if(element.__smooth.hasOwnProperty('accessor'))
+            oldAccessor = element.__smooth.accessor;
+        if(!data) data = oldAccessor['.'];
+        if(!data) throw 'Data not provided and not found';
+        element.__smooth.accessor = {'.': data};
         for(var i = 0; i < element.__smooth.bindings.length; i++) {
             var binding = element.__smooth.bindings[i];
-            if(binding.type == 'data')
-                applyValue(element, binding.target,
-                    getAccessor(data, element.__smooth.context, binding.value));
+            if(binding.type == 'data') {
+                var accessor = getAccessor(
+                    data, element.__smooth.context, binding.value);
+                if(oldAccessor.hasOwnProperty(binding.value))
+                    accessor.oldvalue = oldAccessor[binding.value].value;
+                applyValue(element, binding.target, accessor);
+                element.__smooth.accessor[binding.value] = accessor;
+            }
             // TODO handle actions
         }
         for(var i = 0; i < element.__smooth.descendants.length; i++)
@@ -182,6 +225,9 @@ window.Smooth = (function() {
         },
         render: function(element, data) {
             applyObject(analyzeDom(element, [], this.attribute), data);
+        },
+        update: function(element) {
+            applyObject(element);
         },
         version: 0.1
     };
