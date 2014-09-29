@@ -98,8 +98,9 @@ window.Smooth = (function() {
                 newdata = newdata[context[0]];
                 break;
             case 'object':
-                if(context[0].index) newdata = newdata[context[0].index];
                 if(context[0].key) newdata = newdata[context[0].key];
+                if(typeof(context[0].index)=='number')
+                    newdata = newdata[context[0].index];
                 break;
             default:
                 throw new Error('Invalid context : ' + context[0]);
@@ -110,30 +111,43 @@ window.Smooth = (function() {
         return resolveContext(newdata, context.slice(1));
     }
 
-    function getAccessor(data, context, key) {
+    function getAccessor(data, context, key, offset) {
         var accessor = {};
         var current = resolveContext(data, context);
+        // FIXME current may be undefined / not have property key
         accessor.value = current[key];
+        if(typeof(offset)=='number')
+            accessor.value = accessor.value[offset];
         // define get/set & resolve funcs actual type
         switch(typeof accessor.value) {
             case 'function':
                 accessor.get = function() {
-                    return resolveContext(data, context)[key].call(data);
+                    var that = resolveContext(data, context)[key];
+                    if(typeof(offset)=='number') that = that[offset];
+                    return that.call(that);
                 };
                 accessor.set = function(value) {
-                    resolveContext(data, context)[key].call(data, value);
+                    var that = resolveContext(data, context)[key];
+                    if(typeof(offset)=='number') that = that[offset];
+                    that.call(that, value);
                 };
-                accessor.value = accessor.value.call(data);
+                accessor.value = accessor.value.call(current);
                 break;
             case 'boolean':
             case 'number':
             case 'string':
             case 'object':
                 accessor.get = function() {
-                    return resolveContext(data, context)[key];
+                    if(typeof(offset)=='number')
+                        return resolveContext(data, context)[key][offset];
+                    else
+                        return resolveContext(data, context)[key];
                 };
                 accessor.set = function(value) {
-                    resolveContext(data, context)[key] = value;
+                    if(typeof(offset)=='number')
+                        resolveContext(data, context)[key][offset] = value;
+                    else
+                        resolveContext(data, context)[key] = value;
                 };
                 break;
             case 'undefined':
@@ -163,36 +177,142 @@ window.Smooth = (function() {
         return accessor;
     }
 
-    // TODO handle form elements
-    // TODO also set watches on change etc
+    // TODO handle other form elements
     function applyValue(element, target, accessor) {
-        if (accessor.type == 'value') {
-            var value = accessor.value;
-            if(value == null) value = '';
-            if(accessor.hasOwnProperty('oldvalue') &&
-               accessor.oldvalue == value)
-                return;
-            if(!target) {
-                if(element.tagName == 'INPUT') {
-                    if(!element.__smooth.SKIPUPDATE) {
-                        element.value = value;
-                        element.addEventListener('input', function() {
-                            accessor.set(this.value);
-                            element.value = accessor.get();
-                            this.__smooth.SKIPUPDATE = true;
-                            applyObject(findRoot(element));
-                            delete this.__smooth.SKIPUPDATE;
-                        });
-                    }
-                } else
-                    element.innerHTML = value;
-            } else
-                element.setAttribute(target, value);
+        var value = accessor.value;
+        if(value == null) value = '';
+        if(accessor.hasOwnProperty('oldvalue') &&
+           accessor.oldvalue == value)
+            return;
+        if(target) {
+            element.setAttribute(target, value);
+            return;
         }
-        // TODO duplicate array children here
-        // array on attribute => space separated values
+        if(element.tagName == 'INPUT') {
+            if(!element.__smooth.SKIPUPDATE) {
+                element.value = value;
+                element.addEventListener('input', function() {
+                    accessor.set(this.value);
+                    var newval = accessor.get();
+                    if(newval != this.value)
+                        this.value = newval;
+                    this.__smooth.SKIPUPDATE = true;
+                    applyObject(findRoot(element));
+                    delete this.__smooth.SKIPUPDATE;
+                });
+            }
+        } else
+            element.innerHTML = value;
     }
-
+    
+    /**
+     * properly handles associating an array, by duplicating the source element
+     * and populating all its clones with the proper array elements
+     */
+    function applyArray(element, target, accessor) {
+        // 0. array on attribute => space separated values
+        if(target) {
+            element.setAttribute(target, accessor.value.join(' '));
+            return;
+        }
+        // 1. create bounds
+        var bounds = [document.createComment('smooth'),
+                      document.createComment('/smooth')];
+        element.parentNode.insertBefore(bounds[0], element);
+        element.parentNode.insertBefore(bounds[1], element);
+        bounds[0].__smooth = bounds[1].__smooth == {
+            ancestor: element
+        };
+        // 2. make clones
+        var clones = [];
+        var values = accessor.value;
+        for(var i = 0; i < values.length; i++) {
+            var clone = analyzeDom(element.cloneNode(true),
+                                   element.__smooth.context,
+                                   Smooth.attribute);
+            bounds[1].parentNode.insertBefore(clone, bounds[1]);
+            clone.__smooth.ancestor = element;
+            clone.__smooth.bindings[clone.__smooth.mainBinding].offset = i;
+            for (var j = 0; j < clone.__smooth.descendants.length; j++)
+                clone.__smooth.descendants[j].__smooth.context =
+                    clone.__smooth.descendants[j].__smooth.context.concat({index: i});
+            applyObject(clone, element.__smooth.accessor['.']);
+            clones.push(clone);
+        }
+        // 3. detach element
+        element.__smooth.detached = true;
+        element.__smooth.bounds = bounds;
+        element.__smooth.clones = clones;
+        element.parentNode.removeChild(element);
+    }
+    
+    /**
+     * updates an array, only adding/removing clones as required, while keeping
+     * the uncanged elements as they are.
+     */
+    function updateArray(element, target, accessor) {
+        // 0. array on attribute => space separated values
+        if(target) {
+            element.setAttribute(target, accessor.value.join(' '));
+            return;
+        }
+        var values = accessor.value;
+        var boundary = element.__smooth.bounds[1];
+        // 1. add or remove clones ?
+        var diff = values.length - element.__smooth.clones.length;
+        // 1.1. add clones
+        if(diff > 0) {
+            for(var i = element.__smooth.clones.length; i < values.length; i++) {
+                var clone = analyzeDom(element.cloneNode(true),
+                                       element.__smooth.context,
+                                       Smooth.attribute);
+                boundary.parentNode.insertBefore(clone, boundary);
+                clone.__smooth.ancestor = element;
+                clone.__smooth.bindings[clone.__smooth.mainBinding].offset = i;
+                for(var j = 0; j < clone.__smooth.descendants.length; j++)
+                    clone.__smooth.descendants[j].__smooth.context =
+                        clone.__smooth.descendants[j].__smooth.context.concat({index: i});
+                element.__smooth.clones.push(clone);
+            }
+        // 1.2. remove clones
+        } else if(diff < 0) {
+            while(element.__smooth.clones.length > values.length)
+                boundary.parentNode.removeChild(element.__smooth.clones[values.length]);
+            element.__smooth.clones.splice(diff, -diff);
+        }
+        // 2. apply new data
+        for(var i = 0; i < values.length; i++)
+            applyObject(element.__smooth.clones[i], element.__smooth.accessor['.']);
+    }
+    
+    function applyAccessor(element, target, accessor) {
+        // TODO only if the new accessor is not an array
+        // TODO if still an array, only update changes
+        if(element.__smooth.detached && accessor.type != 'array') {
+            var parent = element.__smooth.bounds[1].parentNode;
+            for (var i = 0; i < element.__smooth.clones.length; i++)
+                parent.removeChild(element.__smooth.clones[i]);
+            parent.insertBefore(element, element.__smooth.bounds[1]);
+            parent.removeChild(element.__smooth.bounds[0]);
+            parent.removeChild(element.__smooth.bounds[1]);
+            delete element.__smooth.detached;
+            delete element.__smooth.bounds;
+            delete element.__smooth.clones;
+        }
+        if(accessor.type == 'value') {
+            return applyValue(element, target, accessor);
+        } else if(accessor.type == 'array') {
+            if(element.__smooth.detached)
+                return updateArray(element, target, accessor);
+            return applyArray(element, target, accessor);
+        }
+    }
+    
+    /**
+     * gets the accessors for each binding and applies that accessor to the
+     * element, then loops on its descendants.
+     * the special "." accessor refers to the root data object.
+     */
     function applyObject(element, data) {
         // step 1 - only main bindings
         if(!element.__smooth) return;
@@ -205,11 +325,11 @@ window.Smooth = (function() {
         for(var i = 0; i < element.__smooth.bindings.length; i++) {
             var binding = element.__smooth.bindings[i];
             if(binding.type == 'data') {
-                var accessor = getAccessor(
-                    data, element.__smooth.context, binding.value);
+                var accessor = getAccessor(data, element.__smooth.context, 
+                                           binding.value, binding.offset);
                 if(oldAccessor.hasOwnProperty(binding.value))
                     accessor.oldvalue = oldAccessor[binding.value].value;
-                applyValue(element, binding.target, accessor);
+                applyAccessor(element, binding.target, accessor);
                 element.__smooth.accessor[binding.value] = accessor;
             }
             // TODO handle actions
