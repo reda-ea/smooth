@@ -1,10 +1,14 @@
 "use strict";
 
+// TODO !!!!!!!!!!!!!!! WRITE PROPER DOCUMENTATION !!!!!!!!!!!!!!!
+
 // TODO move element matching (attribute stuff) to a separate function
 //      (keep Smooth.attribute, add Smooth.matcher that defaults to using it)
 // TODO a method to clear template analysis metadata (__smooth stuff)
 // TODO test how unavailable data is handled
 // TODO handle dropdowns
+// TODO test mixing normal event handler with auto events (shouldn't be done anyway)
+// TODO prepare a testing suite (regression etc)
 
 window.Smooth = (function() {
 
@@ -293,8 +297,6 @@ window.Smooth = (function() {
     }
     
     function applyAccessor(element, target, accessor) {
-        // TODO only if the new accessor is not an array
-        // TODO if still an array, only update changes
         if(element.__smooth.detached && accessor.type != 'array') {
             var parent = element.__smooth.bounds[1].parentNode;
             for (var i = 0; i < element.__smooth.clones.length; i++)
@@ -316,6 +318,7 @@ window.Smooth = (function() {
     }
     
     function getDefaultEvent(element) {
+        // TODO default event depends on the element
         return 'click';
     }
     
@@ -331,7 +334,7 @@ window.Smooth = (function() {
     }
     
     function registerEvent(element, event, action, context) {
-        // TODO more custom event types
+        // TODO custom event types
         if(typeof(action) != 'function') {
             //console.error('Only functions can handle events');
             return;
@@ -378,6 +381,8 @@ window.Smooth = (function() {
             applyObject(element.__smooth.descendants[i], data);
     }
 
+    // TODO render should auto decide (analyze or update)
+    // TODO reset function (remove all meta and events)
     return {
         attribute: 'data-bind',
         /*analyze: function(element) {
