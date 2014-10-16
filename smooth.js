@@ -2,10 +2,9 @@
 
 // TODO move element matching (attribute stuff) to a separate function
 //      (keep Smooth.attribute, add Smooth.matcher that defaults to using it)
-// TODO add a placeholder comment for arrays (and indicate it in ancestor)
 // TODO a method to clear template analysis metadata (__smooth stuff)
-// TODO support getter/setter syntax for data (funcs as data binding property)
-// TODO test how unavailqble data is handled
+// TODO test how unavailable data is handled
+// TODO handle dropdowns
 
 window.Smooth = (function() {
 
@@ -122,14 +121,16 @@ window.Smooth = (function() {
         switch(typeof accessor.value) {
             case 'function':
                 accessor.get = function() {
-                    var that = resolveContext(data, context)[key];
+                    var current = resolveContext(data, context);
+                    var that = current[key];
                     if(typeof(offset)=='number') that = that[offset];
-                    return that.call(that);
+                    return that.call(current);
                 };
                 accessor.set = function(value) {
-                    var that = resolveContext(data, context)[key];
+                    var current = resolveContext(data, context);
+                    var that = current[key];
                     if(typeof(offset)=='number') that = that[offset];
-                    that.call(that, value);
+                    that.call(current, value);
                 };
                 accessor.value = accessor.value.call(current);
                 break;
@@ -177,6 +178,11 @@ window.Smooth = (function() {
         return accessor;
     }
 
+    function defaultInputHandler() {
+        if(this.__smooth.defaultInputHandler)
+            this.__smooth.defaultInputHandler.call(this, arguments);
+    }
+
     // TODO handle other form elements
     function applyValue(element, target, accessor) {
         var value = accessor.value;
@@ -191,7 +197,7 @@ window.Smooth = (function() {
         if(element.tagName == 'INPUT') {
             if(!element.__smooth.SKIPUPDATE) {
                 element.value = value;
-                element.addEventListener('input', function() {
+                element.__smooth.defaultInputHandler = function() {
                     accessor.set(this.value);
                     var newval = accessor.get();
                     if(newval != this.value)
@@ -199,7 +205,8 @@ window.Smooth = (function() {
                     this.__smooth.SKIPUPDATE = true;
                     applyObject(findRoot(element));
                     delete this.__smooth.SKIPUPDATE;
-                });
+                };
+                element.addEventListener('input', defaultInputHandler);
             }
         } else
             element.innerHTML = value;
@@ -248,7 +255,7 @@ window.Smooth = (function() {
     
     /**
      * updates an array, only adding/removing clones as required, while keeping
-     * the uncanged elements as they are.
+     * the unchanged elements as they are.
      */
     function updateArray(element, target, accessor) {
         // 0. array on attribute => space separated values
@@ -308,6 +315,33 @@ window.Smooth = (function() {
         }
     }
     
+    function getDefaultEvent(element) {
+        return 'click';
+    }
+    
+    function executeEvent(e) {
+        if(!this.__smooth || !this.__smooth.action) {
+            this.removeEventListener(e.type, executeEvent);
+            return;
+        }
+        if(typeof(this.__smooth.action[e.type]) != 'function')
+            return;
+        this.__smooth.action[e.type](e);
+        applyObject(findRoot(this));
+    }
+    
+    function registerEvent(element, event, action, context) {
+        // TODO more custom event types
+        if(typeof(action) != 'function') {
+            //console.error('Only functions can handle events');
+            return;
+        }
+        element.__smooth.action[event] = function() {
+            action.apply(context, arguments);
+        };
+        element.addEventListener(event, executeEvent);
+    }
+    
     /**
      * gets the accessors for each binding and applies that accessor to the
      * element, then loops on its descendants.
@@ -331,8 +365,14 @@ window.Smooth = (function() {
                     accessor.oldvalue = oldAccessor[binding.value].value;
                 applyAccessor(element, binding.target, accessor);
                 element.__smooth.accessor[binding.value] = accessor;
+            } else if(binding.type == 'action') {
+                if(!element.__smooth.action)
+                    element.__smooth.action = {};
+                var event = binding.target || getDefaultEvent(element);
+                var context = resolveContext(data, element.__smooth.context);
+                var action = context[binding.value];
+                registerEvent(element, event, action, context);
             }
-            // TODO handle actions
         }
         for(var i = 0; i < element.__smooth.descendants.length; i++)
             applyObject(element.__smooth.descendants[i], data);
