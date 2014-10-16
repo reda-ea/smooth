@@ -204,7 +204,7 @@ window.Smooth = (function() {
                 element.__smooth.defaultInputHandler = function() {
                     accessor.set(this.value);
                     var newval = accessor.get();
-                    if(newval != this.value)
+                    if(newval.toString() !== this.value)
                         this.value = newval;
                     this.__smooth.SKIPUPDATE = true;
                     applyObject(findRoot(element));
