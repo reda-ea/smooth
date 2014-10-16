@@ -380,9 +380,9 @@ window.Smooth = (function() {
 
     return {
         attribute: 'data-bind',
-        analyze: function(element) {
+        /*analyze: function(element) {
             return analyzeDom(element, [], this.attribute);
-        },
+        },*/
         render: function(element, data) {
             applyObject(analyzeDom(element, [], this.attribute), data);
         },
