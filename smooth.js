@@ -335,6 +335,7 @@ window.Smooth = (function() {
     
     function registerEvent(element, event, action, context) {
         // TODO custom event types
+        // FIXME check action type at event trigger, not register
         if(typeof(action) != 'function') {
             //console.error('Only functions can handle events');
             return;
@@ -359,7 +360,17 @@ window.Smooth = (function() {
         if(!data) data = oldAccessor['.'];
         if(!data) throw 'Data not provided and not found';
         element.__smooth.accessor = {'.': data};
+        var mainAccessor = null;
+        var skipBindings = false;
+        if(element.__smooth.mainBinding != null) {
+            var mb = element.__smooth.bindings[element.__smooth.mainBinding];
+            mainAccessor = getAccessor(data, element.__smooth.context, mb.value, mb.offset);
+            if(mainAccessor.type == 'array')
+                skipBindings = true;
+        }
         for(var i = 0; i < element.__smooth.bindings.length; i++) {
+            if(skipBindings && i != element.__smooth.mainBinding)
+                continue;
             var binding = element.__smooth.bindings[i];
             if(binding.type == 'data') {
                 var accessor = getAccessor(data, element.__smooth.context, 
@@ -368,6 +379,7 @@ window.Smooth = (function() {
                     accessor.oldvalue = oldAccessor[binding.value].value;
                 applyAccessor(element, binding.target, accessor);
                 element.__smooth.accessor[binding.value] = accessor;
+                if(skipBindings) return; // if we reach this we are on mainBinding
             } else if(binding.type == 'action') {
                 if(!element.__smooth.action)
                     element.__smooth.action = {};
