@@ -9,6 +9,7 @@
 // TODO handle dropdowns
 // TODO test mixing normal event handler with auto events (shouldn't be done anyway)
 // TODO prepare a testing suite (regression etc)
+// TODO allow getting the current offset in an array (for data + events)
 
 window.Smooth = (function() {
 
