@@ -132,8 +132,23 @@
         };
     };
     
+    /**
+     * pops a property out of an object
+     **/
+    var popObject = function(object, prop) {
+        // TODO support complex paths
+        if(typeof(object) == 'string') {
+            prop = object;
+            object = window;
+        }
+        var ret = object[prop];
+        delete object[prop];
+        return ret;
+    }
+    
     window.Neo = {
         do: Promise,
-        spec: specialize
+        spec: specialize,
+        pop: popObject
     };
 })();
