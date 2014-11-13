@@ -26,6 +26,12 @@ Changes to the object made during bound event callbacks (and any other template
 triggered action) will automatically be reflected on the DOM structure. Other
 changes can be applied at any times using the `Smooth.update` function.
 
+examples
+--------
+
+A fairly complex example, exposing most of the engine's features, can be accessed
+here: http://jsfiddle.net/drnsxdo4/
+
 syntax
 ------
 
