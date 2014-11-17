@@ -297,6 +297,7 @@ window.Smooth = (function() {
             applyObject(element.__smooth.clones[i], element.__smooth.accessor['.']);
     }
     
+    // TODO handle undefined same as []
     function applyAccessor(element, target, accessor) {
         if(element.__smooth.detached && accessor.type != 'array') {
             var parent = element.__smooth.bounds[1].parentNode;
