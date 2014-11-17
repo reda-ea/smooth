@@ -94,6 +94,16 @@
     }
     
     var loadOneJSON = function(url, success, fail) {
+        var method = 'GET';
+        // alternate syntax: method, url, success, fail
+        if(typeof(success)=='string') {
+            method = url;
+            url = success;
+            success = fail;
+            if(arguments.length > 3)
+                fail = arguments[3];
+            else fail = undefined;
+        }
         var xhr = new XMLHttpRequest();
         xhr.onreadystatechange = function() {
             if (xhr.readyState == 4) { // `DONE`
@@ -122,10 +132,9 @@
         var fullurl = url.replace('$JSONP', cbname);
         return loadOneScript(fullurl, null, fail);
     }
-    
-    // TODO add json/jsonp
+
     // TODO handle caching
-    window.Bossa = {
+    var Bossa = {
         js: function(url, success, fail) {
             if(!url) throw 'Content URL must be provided';
             loadOneScript(url, function() {
@@ -154,6 +163,7 @@
                 success = fail;
                 if(arguments.length > 3)
                     fail = arguments[3];
+                else fail = undefined;
             }
             if(!url) throw Error('Content URL must be provided');
             if(!ctn) ctn = document.createElement('body');
@@ -175,6 +185,7 @@
                 success = fail;
                 if(arguments.length > 3)
                     fail = arguments[3];
+                else fail = undefined;
             }
             if(!url) throw Error('Content URL must be provided');
             var func = (url.indexOf('$JSONP') == -1) ?
@@ -188,7 +199,22 @@
                 if(typeof(fail)=='function')
                     fail.apply(null, arguments);
             });
+        },
+        remote: function(baseUrl, specs) {
+            // returns a type that can make instances with new
+            // by default, add save and delete methods to instances
+            // type itself has list and create (== new) methods
+            // list returns an array of instance getters (promises)
+            //  that can be invoked with (success, fail) args
+            // specs define how instances behave:
+            //  * can link foreign keys with other base urls (and populate)
+            //     * populating can be as subobject or inheritance
+            //  * can replace direct access with custom getters/setters
+            //  * can add additional data or meta data
+            //  * can completely customize the retreival/saving etc
         }
-    }
+    };
+    
+    window.Bossa = Bossa
     
 })();
