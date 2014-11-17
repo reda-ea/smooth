@@ -29,8 +29,10 @@ changes can be applied at any times using the `Smooth.update` function.
 examples
 --------
 
-A fairly complex example, exposing most of the engine's features, can be accessed
-here: http://jsfiddle.net/drnsxdo4/
+Here's a very basic example (showing two-way binding): http://jsfiddle.net/38c705s6/
+
+Another fairly complex example, exposing most of the engine's features, can be 
+seen here: http://jsfiddle.net/drnsxdo4/
 
 syntax
 ------
