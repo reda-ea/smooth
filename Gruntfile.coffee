@@ -32,6 +32,9 @@ module.exports = (grunt) ->
 			main:
 				files:
 					'dist/<%=pkg.name%>.min.js': ['dist/<%=pkg.name%>.js']
+		clean:
+			test: ['tests/all.*']
+			release: ['dist']	
 
 	grunt.loadNpmTasks 'grunt-contrib-connect'
 	grunt.loadNpmTasks 'grunt-mocha-phantomjs'
@@ -39,6 +42,9 @@ module.exports = (grunt) ->
 	grunt.loadNpmTasks 'grunt-contrib-uglify'
 	grunt.loadNpmTasks 'grunt-contrib-coffee'
 	grunt.loadNpmTasks 'grunt-contrib-concat'
+	grunt.loadNpmTasks 'grunt-contrib-clean'
 
-	grunt.registerTask 'test', ['concat:test', 'coffee:test', 'connect', 'mocha_phantomjs']
+	grunt.registerTask 'test', [ 'concat:test', 'coffee:test'
+	                             'connect', 'mocha_phantomjs'
+	                             'clean:test' ]
 	grunt.registerTask 'release', ['copy', 'uglify']

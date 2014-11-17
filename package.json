@@ -27,13 +27,14 @@
   "homepage": "https://github.com/reda-ea/smooth",
   "dependencies": {},
   "devDependencies": {
-    "grunt-contrib-watch": "*",
-    "grunt-contrib-connect": "*",
-    "grunt-mocha-phantomjs": "*",
-    "grunt-contrib-copy": "*",
-    "grunt-contrib-uglify": "*",
+    "bower": "*",
+    "grunt-contrib-clean": "*",
     "grunt-contrib-coffee": "*",
     "grunt-contrib-concat": "*",
-    "bower": "*"
+    "grunt-contrib-connect": "*",
+    "grunt-contrib-copy": "*",
+    "grunt-contrib-uglify": "*",
+    "grunt-contrib-watch": "*",
+    "grunt-mocha-phantomjs": "*"
   }
 }
