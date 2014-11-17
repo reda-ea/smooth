@@ -1,2 +1,6 @@
 /.c9
 /test.*
+/bower_components
+/node_modules
+/tests/all.*
+/dist
