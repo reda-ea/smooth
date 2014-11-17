@@ -1,0 +1,10 @@
+{
+  "name": "smooth",
+  "private": true,
+  "devDependencies": {
+    "mocha": "*",
+    "chai": "*",
+    "jquery": "*",
+    "chai-jquery": "*"
+  }
+}

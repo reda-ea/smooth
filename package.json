@@ -1,0 +1,39 @@
+{
+  "name": "smooth",
+  "version": "0.9.0",
+  "description": "the easiest javascript templating engine",
+  "main": "smooth.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "grunt test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/reda-ea/smooth.git"
+  },
+  "keywords": [
+    "javascript",
+    "template",
+    "DOM",
+    "library"
+  ],
+  "author": "Reda El Khattabi <reda.ea@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/reda-ea/smooth/issues"
+  },
+  "homepage": "https://github.com/reda-ea/smooth",
+  "dependencies": {},
+  "devDependencies": {
+    "grunt-contrib-watch": "*",
+    "grunt-contrib-connect": "*",
+    "grunt-mocha-phantomjs": "*",
+    "grunt-contrib-copy": "*",
+    "grunt-contrib-uglify": "*",
+    "grunt-contrib-coffee": "*",
+    "grunt-contrib-concat": "*",
+    "bower": "*"
+  }
+}
