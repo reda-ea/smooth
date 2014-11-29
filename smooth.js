@@ -304,9 +304,9 @@ window.Smooth = (function() {
             }
         // 1.2. remove clones
         } else if(diff < 0) {
-            while(element.__smooth.clones.length > values.length)
-                boundary.parentNode.removeChild(element.__smooth.clones[values.length]);
-            element.__smooth.clones.splice(diff, -diff);
+            var removed = element.__smooth.clones.splice(values.length, -diff);
+            for(var i = 0; i < removed.length; i++)
+                boundary.parentNode.removeChild(removed[i]);
         }
         // 2. apply new data
         for(var i = 0; i < values.length; i++)
