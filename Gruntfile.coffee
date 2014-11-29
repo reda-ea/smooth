@@ -19,7 +19,9 @@ module.exports = (grunt) ->
 		mocha_phantomjs:
 			altl:
 				options:
-					urls: ['http://' + process.env.C9_HOSTNAME + '/tests/index.html']
+					urls: ['http://' + 
+					       (process.env.C9_HOSTNAME || '0.0.0.0:8000') +
+					       '/tests/index.html']
 		copy:
 			main:
 				files: [
