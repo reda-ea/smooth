@@ -14,10 +14,10 @@
 window.Smooth = (function() {
 
     // a binding == {type, value, target} (target optional)
-    function getBindings(element, attribute) {
-        if(!element.hasAttribute(attribute))
-            return [];
-        var allbindings = element.getAttribute(attribute).split(' ');
+    function getBindings(element, parser) {
+        var bindingstring = parser.call(element, element);
+        if(!bindingstring) return [];
+        var allbindings = bindingstring.split(' ');
         var ret = [];
         for (var i = 0; i < allbindings.length; i++) {
             var bindingspec = allbindings[i];
@@ -42,27 +42,42 @@ window.Smooth = (function() {
     // callback has the element as this and first arg
     // callback return is added to the matched array (which itself is returned)
     // returns an array of matched descendents (w/ callbacks already executed)
-    function findDescendants(element, attribute, callback) {
+    function findDescendants(element, parser, callback) {
         var matched = [];
         for (var i = 0; i < element.childNodes.length; i++) {
             var e = element.childNodes[i];
             if(e.nodeName[0]=='#') continue; // texts, comments, etc
-            if(e.hasAttribute(attribute))
+            if(parser.call(e, e)) // parser must evaluate to true
                 matched.push(callback.call(e, e));
             else
                 Array.prototype.push.apply(matched,
-                    findDescendants(e, attribute, callback));
+                    findDescendants(e, parser, callback));
         }
         return matched;
+    }
+    
+    // returns a parser function for the given attribute
+    function getDefaultBindingParser(attribute) {
+        return function() {
+            if(!this.hasAttribute(attribute))
+                return false;
+            return this.getAttribute(attribute).trim();
+            // if the attribute is blank, return is considered false ('')
+        };
     }
 
     // element is the DOM HTMLElement to analyze
     // context is an array of bindings on upper elements
     // attribute is the name of the binding attribute
     // returns the DOM element with the __smooth prop (usually the same param)
+    // attribute can be a function: takes element and returns bindings string
     function analyzeDom(element, context, attribute) {
         var meta = {context: context};
-        meta.bindings = getBindings(element, attribute);
+        if(typeof(attribute) == 'function')
+            meta.parser = attribute;
+        else
+            meta.parser = getDefaultBindingParser(attribute);
+        meta.bindings = getBindings(element, meta.parser);;
         for (var i = 0; i < meta.bindings.length; i++) {
             var binding = meta.bindings[i];
             if(binding.type == 'data' && !binding.target) {
@@ -72,8 +87,8 @@ window.Smooth = (function() {
         }
         var subcontext = (meta.mainBinding == null) ? context :
                          context.concat(meta.bindings[meta.mainBinding].value);
-        meta.descendants = findDescendants(element, attribute, function() {
-            var that = analyzeDom(this, subcontext, attribute);
+        meta.descendants = findDescendants(element, meta.parser, function() {
+            var that = analyzeDom(this, subcontext, meta.parser);
             that.__smooth.ancestor = element;
             return that;
         });
@@ -239,9 +254,10 @@ window.Smooth = (function() {
         var clones = [];
         var values = accessor.value;
         for(var i = 0; i < values.length; i++) {
+            debugger;
             var clone = analyzeDom(element.cloneNode(true),
                                    element.__smooth.context,
-                                   Smooth.attribute);
+                                   element.__smooth.parser);
             bounds[1].parentNode.insertBefore(clone, bounds[1]);
             clone.__smooth.ancestor = element;
             clone.__smooth.bindings[clone.__smooth.mainBinding].offset = i;
@@ -277,7 +293,7 @@ window.Smooth = (function() {
             for(var i = element.__smooth.clones.length; i < values.length; i++) {
                 var clone = analyzeDom(element.cloneNode(true),
                                        element.__smooth.context,
-                                       Smooth.attribute);
+                                       element.__smooth.parser);
                 boundary.parentNode.insertBefore(clone, boundary);
                 clone.__smooth.ancestor = element;
                 clone.__smooth.bindings[clone.__smooth.mainBinding].offset = i;
