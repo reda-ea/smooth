@@ -21,7 +21,7 @@ window.Smooth = (function() {
         var ret = [];
         for (var i = 0; i < allbindings.length; i++) {
             var bindingspec = allbindings[i];
-            if(bindingspec.length < 2) continue; // illegal bindings => ignore
+            if(!bindingspec.length) continue; // illegal bindings => ignore
             var binding = {};
             if(bindingspec[0] == '!') {
                 binding.type = 'action';
@@ -29,6 +29,7 @@ window.Smooth = (function() {
             } else
                 binding.type = 'data';
             var ss = bindingspec.split('@');
+            if(!ss[0].length) continue; // illegal bindings => ignore
             binding.value = ss[0];
             if(ss.length > 1)
                 binding.target = ss[1];
@@ -254,7 +255,6 @@ window.Smooth = (function() {
         var clones = [];
         var values = accessor.value;
         for(var i = 0; i < values.length; i++) {
-            debugger;
             var clone = analyzeDom(element.cloneNode(true),
                                    element.__smooth.context,
                                    element.__smooth.parser);
