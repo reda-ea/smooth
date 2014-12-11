@@ -1,6 +1,26 @@
 {
   "name": "smooth",
-  "private": true,
+  "version": "0.9.0",
+  "description": "the easiest javascript templating engine",
+  "main": "smooth.js",
+  "ignore": [
+    "**/*",
+    "!smooth.js"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/reda-ea/smooth.git"
+  },
+  "keywords": [
+    "javascript",
+    "template",
+    "DOM",
+    "library"
+  ],
+  "authors": [
+    "Reda El Khattabi <reda.ea@gmail.com>"
+  ],
+  "license": "MIT",
   "devDependencies": {
     "mocha": "*",
     "chai": "*",
