@@ -2,6 +2,10 @@ module.exports = (grunt) ->
 
 	grunt.initConfig
 		pkg: grunt.file.readJSON 'package.json'
+		watch:
+			test:
+				files: ['*.js', 'tests/*.coffee', '!tests/all.coffee']
+				tasks: ['test']
 		concat:
 			test:
 				files:
@@ -45,8 +49,10 @@ module.exports = (grunt) ->
 	grunt.loadNpmTasks 'grunt-contrib-coffee'
 	grunt.loadNpmTasks 'grunt-contrib-concat'
 	grunt.loadNpmTasks 'grunt-contrib-clean'
+	grunt.loadNpmTasks 'grunt-contrib-watch'
 
 	grunt.registerTask 'test', [ 'concat:test', 'coffee:test'
 	                             'connect', 'mocha_phantomjs'
 	                             'clean:test' ]
 	grunt.registerTask 'release', ['copy', 'uglify']
+	grunt.registerTask 'default', ['watch:test']
